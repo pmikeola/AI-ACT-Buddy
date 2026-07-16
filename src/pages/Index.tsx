@@ -351,6 +351,10 @@ export default function Index() {
                         latencyMs={msg.latencyMs}
                         onRefine={handleRefine}
                         devMode={devMode}
+                        userQuery={(() => {
+                          const idx = messages.indexOf(msg);
+                          return idx > 0 && messages[idx - 1]?.role === "user" ? messages[idx - 1].content : undefined;
+                        })()}
                       />
                     ) : (
                       <div className="rounded-xl border border-border bg-card/50 px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">

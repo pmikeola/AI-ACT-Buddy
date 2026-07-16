@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Shield, FileCheck, Languages, LayoutList, UserCheck, Zap, ChevronDown } from "lucide-react";
 import {
   Accordion,
@@ -6,6 +7,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { redirectToCheckout, type PriceTier } from "@/lib/stripe";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const solutionCards = [
   {
@@ -97,6 +101,7 @@ const pricingTiers = [
     ],
     cta: "Start Free",
     ctaLink: "/assess",
+    stripeTier: null as PriceTier | null,
     featured: false,
   },
   {
@@ -114,6 +119,7 @@ const pricingTiers = [
     ],
     cta: "Get Starter",
     ctaLink: "/auth",
+    stripeTier: "starter" as PriceTier,
     featured: true,
   },
   {
@@ -130,6 +136,7 @@ const pricingTiers = [
     ],
     cta: "Get Pro",
     ctaLink: "/auth",
+    stripeTier: "pro" as PriceTier,
     featured: false,
   },
 ];
@@ -169,6 +176,29 @@ const faqs = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  const handlePricingClick = async (tier: typeof pricingTiers[number]) => {
+    if (!tier.stripeTier) {
+      navigate(tier.ctaLink);
+      return;
+    }
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    setCheckoutLoading(tier.name);
+    try {
+      await redirectToCheckout(tier.stripeTier);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Checkout failed");
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -451,16 +481,17 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to={tier.ctaLink}
-                  className={`block text-center py-3.5 rounded-lg font-semibold text-sm transition-colors ${
+                <button
+                  onClick={() => handlePricingClick(tier)}
+                  disabled={checkoutLoading === tier.name}
+                  className={`block w-full text-center py-3.5 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 ${
                     tier.featured
                       ? "bg-primary text-primary-foreground hover:opacity-90"
                       : "border border-border text-foreground hover:border-primary hover:text-primary"
                   }`}
                 >
-                  {tier.cta}
-                </Link>
+                  {checkoutLoading === tier.name ? "Redirecting..." : tier.cta}
+                </button>
               </div>
             ))}
           </div>
